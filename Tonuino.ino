@@ -18,7 +18,7 @@
 */
 
 // uncomment the below line to enable five button support
-//#define FIVEBUTTONS
+#define FIVEBUTTONS
 
 static const uint32_t cardCookie = 322417479;
 
@@ -641,6 +641,7 @@ MFRC522::StatusCode status;
 #define buttonDown A2
 #define busyPin 4
 #define shutdownPin 7
+#define jackDetectPin 8
 #define openAnalogPin A7
 
 #ifdef FIVEBUTTONS
@@ -684,6 +685,8 @@ void disablestandbyTimer() {
 void checkStandbyAtMillis() {
   if (sleepAtMillis != 0 && millis() > sleepAtMillis) {
     Serial.println(F("=== power off!"));
+    mp3.playMp3FolderTrack(600); // nico
+    delay(2000); // nico
     // enter sleep state
     digitalWrite(shutdownPin, HIGH);
     delay(500);
@@ -967,6 +970,17 @@ void loop() {
       adminMenu();
       break;
     }
+
+    // switch off with left, right, and pause button
+    if ((pauseButton.pressedFor(LONG_PRESS) || buttonFour.pressedFor(LONG_PRESS) || buttonFive.pressedFor(LONG_PRESS))  && pauseButton.isPressed() && buttonFour.isPressed() && buttonFive.isPressed()) {      
+      Serial.println(F("=== power off!"));
+      mp3.playMp3FolderTrack(600);
+      delay(2000);
+      // enter sleep state
+      digitalWrite(shutdownPin, HIGH);
+      delay(500);
+      break;
+    }    
 
     if (pauseButton.wasReleased()) {
       if (activeModifier != NULL)
