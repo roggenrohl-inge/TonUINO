@@ -650,6 +650,7 @@ MFRC522::StatusCode status;
 #endif
 
 #define LONG_PRESS 1000
+#define VERY_LONG_PRESS 3000
 
 Button pauseButton(buttonPause);
 Button upButton(buttonUp);
@@ -722,13 +723,13 @@ void waitForTrackToFinish() {
 void setup() {
 
   Serial.begin(115200); // Es gibt ein paar Debug Ausgaben über die serielle Schnittstelle
-   
+
   // Wert für randomSeed() erzeugen durch das mehrfache Sammeln von rauschenden LSBs eines offenen Analogeingangs
   uint32_t ADC_LSB;
   uint32_t ADCSeed;
-  for(uint8_t i = 0; i < 128; i++) {
+  for (uint8_t i = 0; i < 128; i++) {
     ADC_LSB = analogRead(openAnalogPin) & 0x1;
-    ADCSeed ^= ADC_LSB << (i % 32); 
+    ADCSeed ^= ADC_LSB << (i % 32);
   }
   randomSeed(ADCSeed); // Zufallsgenerator initialisieren
 
@@ -848,6 +849,33 @@ void previousButton() {
   previousTrack();
   delay(1000);
 }
+
+// nico: Hörbuch zurücksetzen
+void previousButtonLong() {
+  if (activeModifier != NULL)
+    if (activeModifier->handlePreviousButton() == true)
+      return;
+
+  if(myFolder->mode == 2 || myFolder->mode == 8) {
+    Serial.println(F("Albummodus ist aktiv -> Zurueckspulen"));
+    currentTrack = firstTrack;    
+    mp3.playFolderTrack(myFolder->folder, currentTrack);
+  }
+  else if (myFolder->mode == 5) {
+    Serial.println(F("Hörbuch Modus ist aktiv -> Zurueckspulen und "
+                     "Fortschritt speichern"));
+    currentTrack = 1;
+    mp3.playMp3FolderTrack(601);
+    delay(3000);
+    mp3.playFolderTrack(myFolder->folder, currentTrack);
+    EEPROM.update(myFolder->folder, currentTrack);
+  }
+  else
+    previousTrack();
+    
+  delay(1000);
+}
+
 
 void playFolder() {
   Serial.println(F("== playFolder()")) ;
@@ -971,8 +999,8 @@ void loop() {
       break;
     }
 
-    // switch off with left, right, and pause button
-    if ((pauseButton.pressedFor(LONG_PRESS) || buttonFour.pressedFor(LONG_PRESS) || buttonFive.pressedFor(LONG_PRESS))  && pauseButton.isPressed() && buttonFour.isPressed() && buttonFive.isPressed()) {      
+    // nico: switch off with left, right, and pause button
+    if ((pauseButton.pressedFor(LONG_PRESS) || buttonFour.pressedFor(LONG_PRESS) || buttonFive.pressedFor(LONG_PRESS))  && pauseButton.isPressed() && buttonFour.isPressed() && buttonFive.isPressed()) {
       Serial.println(F("=== power off!"));
       mp3.playMp3FolderTrack(600);
       delay(2000);
@@ -980,7 +1008,7 @@ void loop() {
       digitalWrite(shutdownPin, HIGH);
       delay(500);
       break;
-    }    
+    }
 
     if (pauseButton.wasReleased()) {
       if (activeModifier != NULL)
@@ -1087,7 +1115,21 @@ void loop() {
         playShortCut(1);
       }
     }
-    if (buttonFive.wasReleased()) {
+
+    if (buttonFive.pressedFor(VERY_LONG_PRESS)) { // nico {
+      if (isPlaying()) {
+        if (!mySettings.invertVolumeButtons) {
+          volumeDownButton();
+        }
+        else {
+          previousButtonLong();
+        }
+      }
+      else {
+        playShortCut(2);
+      }
+    }
+    else if (buttonFive.wasReleased()) {
       if (isPlaying()) {
         if (!mySettings.invertVolumeButtons) {
           volumeDownButton();
