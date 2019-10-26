@@ -924,6 +924,7 @@ void playFolder() {
     if (currentTrack == 0 || currentTrack > numTracksInFolder) {
       currentTrack = 1;
     }
+    Serial.print("Aktueller Track: "); Serial.println(currentTrack); // nico
     mp3.playFolderTrack(myFolder->folder, currentTrack);
   }
   // Spezialmodus Von-Bin: Hörspiel: eine zufällige Datei aus dem Ordner
